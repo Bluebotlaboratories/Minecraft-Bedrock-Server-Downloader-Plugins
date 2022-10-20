@@ -43,13 +43,14 @@ module.exports = function (server, serverData) {
     })
 
     client.on('npc_request', (data) => {
+      // Get entity data from entity id
       const entityData = serverData.entities[data.runtime_entity_id]
 
       // Get NPC "actorID"
       const actorID = Long.fromString(entityData.unique_id)
       const actorIDList = [actorID.getHighBitsUnsigned(), actorID.getLowBitsUnsigned()]
 
-      console.log("NPC REQUEST", data)
+      // unmap NPC packet enum
       const npcEnumMapping = {
         "set_actions": 0,
         "execute_action": 1,
@@ -60,7 +61,7 @@ module.exports = function (server, serverData) {
         "execute_openining_commands": 6
       }
 
-      // Data for "scenetree"
+      // Data for "scenetree" (Tiny Agnes's mob info dialogue)
       const sceneData = {
         "sniffer_description_scene": { "action_type": "open", "dialogue": "{\"rawtext\":[{\"translate\":\"dialog.sniffer.button.1\"},{\"text\":\"\\n\\n\"},{\"translate\":\"dialog.sniffer.button.2\"},{\"text\":\"\\n\\n\"},{\"translate\":\"dialog.sniffer.button.3\"}]}\n", "screen_name": "sniffer_description_scene", "npc_name": "{\"rawtext\":[{\"translate\":\"bb.vote.sniffer\"}]}", "action_json": "[{\"button_name\":\"{\\\"rawtext\\\":[{\\\"translate\\\":\\\"button.back\\\"}]}\",\"data\":[{\"cmd_line\":\"\",\"cmd_ver\":23}],\"mode\":0,\"text\":\"\",\"type\":1},{\"button_name\":\"\",\"data\":null,\"mode\":2,\"text\":\"\",\"type\":1},{\"button_name\":\"\",\"data\":null,\"mode\":1,\"text\":\"\",\"type\":1}]\n" },
         "tuffgolem_description_scene": { "action_type": "open", "dialogue": "{\"rawtext\":[{\"translate\":\"dialog.tuff.button.1\"},{\"text\":\"\\n\\n\"},{\"translate\":\"dialog.tuff.button.2\"},{\"text\":\"\\n\\n\"},{\"translate\":\"dialog.tuff.button.3\"}]}\n", "screen_name": "sniffer_description_scene", "npc_name": "{\"rawtext\":[{\"translate\":\"bb.vote.golem\"}]}", "action_json": "[{\"button_name\":\"{\\\"rawtext\\\":[{\\\"translate\\\":\\\"button.back\\\"}]}\",\"data\":[{\"cmd_line\":\"\",\"cmd_ver\":23}],\"mode\":0,\"text\":\"\",\"type\":1},{\"button_name\":\"\",\"data\":null,\"mode\":2,\"text\":\"\",\"type\":1},{\"button_name\":\"\",\"data\":null,\"mode\":1,\"text\":\"\",\"type\":1}]\n" },
@@ -79,7 +80,7 @@ module.exports = function (server, serverData) {
       if (data.request_type === 1) { // Click on button
         if (Object.keys(sceneData).includes(data.scene_name)) { // If is is in a scene that is in sceneData, then the client has probably clicked a back button
           client.queue("npc_dialogue", { "entity_id": actorIDList, "action_type": "open", "dialogue": "", "screen_name": "", "npc_name": "", "action_json": "" })
-        } else if (entityData.entity_type === "mv:agnes") { // This is specific to agnes
+        } else if (entityData.entity_type === "mv:agnes") { // This is specific to Tiny Agnes (handle mob info dialogue)
           // Get the entity data from the entity id
           entityData = serverData.entities[data.runtime_entity_id]
 
@@ -96,7 +97,7 @@ module.exports = function (server, serverData) {
           NPCCommandData = JSON.parse(NPCCommandData.value.replaceAll('\\n', ''))[data.action_type]
           const sceneName = NPCCommandData.data[0].cmd_line.split(' ').reverse()[0] // Get "scene" name from the command data
 
-          //client.queue("npc_dialogue", {"entity_id":actorIDList,"action_type":2,"dialogue":"","screen_name":"","npc_name":"","action_json":""})
+          //client.queue("npc_dialogue", {"entity_id":actorIDList,"action_type":2,"dialogue":"","screen_name":"","npc_name":"","action_json":""}) (closes the dialogue box)
           client.queue("npc_dialogue", Object.assign({ "entity_id": actorIDList }, sceneData[sceneName]))
         } else if (data.action_type === 1) {
           console.log("Sending form request")
@@ -105,11 +106,15 @@ module.exports = function (server, serverData) {
 
           // Wait for dialogue to be completely closed or it doesn't work
           setTimeout(() => {
+            // Send leaderboard form
             const formData = { "buttons": [{ "image": null, "text": "Close window" }], "content": "1. 0.05 - Test\n2.\n3.\n4.\n5.\n6.\n7.\n8.\n9.\n10.\n\n\n", "title": "Dropper Leaderboard", "type": "form" }
             client.queue("modal_form_request", { "form_id": 3, "data": JSON.stringify(formData) })
           }, 500)
+        } else if (data.action_type === 0) {
+          // TODO: Implement queues
         }
-      } else if (data.request_type === 6) { // Open commands
+      } else if (data.request_type === 6) { // Run NPC open commands
+        // Sound mappings for NPCs
         entitySounds = {
           "mv:jens": "entity.jens.random",
           "mv:parkour_jens": "entity.jens.random",
@@ -124,22 +129,23 @@ module.exports = function (server, serverData) {
           "mv:dropper_agnes": "entity.agnes.random"
         }
 
-        // Convert regular position to strange sound packet position
-        const soundPacketPosition = {
-          "x": (8 * entityData.position.x) + 4,
-          "y": (8 * entityData.position.y),
-          "z": (8 * entityData.position.z) + 4
-        }
-
+        // If the NPC has a sound mapping, play the corresponding sound
         if (Object.keys(entitySounds).includes(entityData.entity_type)) {
+          // Convert regular entity position to strange sound packet position
+          const soundPacketPosition = {
+            "x": (8 * entityData.position.x) + 4,
+            "y": (8 * entityData.position.y),
+            "z": (8 * entityData.position.z) + 4
+          }
+
           client.queue("play_sound", { "name": entitySounds[entityData.entity_type], "coordinates": soundPacketPosition, "volume": 1, "pitch": 1 })
         }
       }
     })
 
+    // Debug Commands
     client.on('command_request', (data) => {
       commandData = data.command.split(' ')
-
       try {
         switch (commandData[0]) {
           case "/formtest":
