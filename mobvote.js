@@ -4,10 +4,30 @@ const fs = require('fs');
 module.exports = function (server, serverData) {
   console.log("Mob Vote plugin loaded")
 
-  // Create config if doesn't exist
+  // Create config file if they don't exist
   try {
-
+    fs.mkdirSync("./plugins/mobvote/")
   } catch {}
+  try {
+    var pluginConfig = fs.readFileSync("./plugins/mobvote/config.json")
+  } catch {
+    var pluginConfig = {}
+    fs.writeFileSync("./plugins/mobvote/config.json", JSON.stringify(pluginConfig))
+  }
+  try {
+    var pluginData = fs.readFileSync("./plugins/mobvote/data.json")
+  } catch {
+    var pluginData = {
+      sniffer_parkour_leaderboard: [],
+      tuffgolem_parkour_leaderboard: [],
+      rascal_parkour_leaderboard: [],
+      dropper_parkour_leaderboard: [],
+      sniffer_votes: [],
+      tuffgolem_votes: [],
+      rascal_votes: []
+    }
+    fs.writeFileSync("./plugins/mobvote/data.json", JSON.stringify(pluginData))
+  }
 
   server.on('connect', client => {
     client.on('resource_pack_client_response', (data) => {
