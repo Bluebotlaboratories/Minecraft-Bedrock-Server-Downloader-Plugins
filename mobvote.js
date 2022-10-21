@@ -5,31 +5,31 @@ const fs = require('fs');
 // Copyright Bluebotlaboratories 2022-
 // 
 // TODO:
-// - Implement Voting
-//   - Implement Lever and Button interaction
-//   - Implement Vote Data Saving
-//   - Implement Vote Response
-// - Implement Parkour
-//   - Implement queue System
-//   - Implement waypoint detection
-//   - Implement timer
-//   - Implement display system
-//   - Implement leaderboard writing system
-// - Implement Arena
-//   - Implement zombie & skeleton spawning
-//   - Implement zombie AI
-//   - Implement player damage and death
-//   - Implement arrows
-//   - Implement skeleton AI (aimbot)
-//   - Implement skeleton animation
-//   - Implement zombie and skeleton damage and death
-//   - Implement burning and cooling
-//   - Implement points
-//   - Implement item buying via points
-//   - Implement potions
-//   - Implement gapples
-//   - Implement different swords
-//   - Implement creepers
+// - [ ] Implement Voting
+//   - [ ] Implement Lever and Button interaction
+//   - [ ] Implement Vote Data Saving
+//   - [ ] Implement Vote Response
+// - [ ] Implement Parkour
+//   - [ ] Implement queue System
+//   - [ ] Implement waypoint detection
+//   - [ ] Implement timer
+//   - [ ] Implement display system
+//   - [ ] Implement leaderboard writing system
+// - [ ] Implement Arena
+//   - [ ] Implement zombie & skeleton spawning
+//   - [ ] Implement zombie AI
+//   - [ ] Implement player damage and death
+//   - [ ] Implement arrows
+//   - [ ] Implement skeleton AI (aimbot)
+//   - [ ] Implement skeleton animation
+//   - [ ] Implement zombie and skeleton damage and death
+//   - [ ] Implement burning and cooling
+//   - [ ] Implement points
+//   - [ ] Implement item buying via points
+//   - [ ] Implement potions
+//   - [ ] Implement gapples
+//   - [ ] Implement different swords
+//   - [ ] Implement creepers
 
 module.exports = function (server, serverData) {
   console.log("Mob Vote plugin loaded")
@@ -81,6 +81,68 @@ module.exports = function (server, serverData) {
         // Show join title
         client.queue("set_title", { "type": "set_durations", "text": "", "fade_in_time": 5, "stay_time": 60, "fade_out_time": 5, "xuid": "", "platform_online_id": "" })
         client.queue("set_title", { "type": "set_title_json", "text": "{\"rawtext\":[{\"translate\":\"bb.entry.title\"}]}\n", "fade_in_time": -1, "stay_time": -1, "fade_out_time": -1, "xuid": "", "platform_online_id": "" })
+      }
+    })
+
+    client.on("inventory_transaction", (data) => {
+      console.log("INV_TRANSAC",data.transaction.transaction_data.block_position)
+
+      if (data.transaction.transaction_type === 'item_use') {
+        rascalVoteLevers = {
+          // RASCAL
+          "23_-22_5": true,
+          "23_-22_6": true,
+          "23_-22_7": true,
+          "23_-22_10": true,
+          "23_-22_11": true,
+          "23_-22_12": true,
+        }
+        tuffVoteLevers = {
+          // TUFF
+          "19_-22_16": false,
+          "18_-22_16": true,
+          "17_-22_16": true,
+          "14_-22_16": false,
+          "13_-22_16": true,
+          "12_-22_16": false,
+        }
+        snifferVoteLevers = {
+          // SNIFFER
+          "8_-22_12": false,
+          "8_-22_11": false,
+          "8_-22_10": false,
+          "8_-22_7": false,
+          "8_-22_6": false,
+          "8_-22_5": true,
+        }
+
+        snifferVoteLeverIDs = [
+          6570,
+          6562
+        ]
+        tuffVoteLeverIDs = [
+          6561,
+          6569
+        ]
+        rascalVoteLeverIDs = [
+          6562,
+          6570
+        ]
+
+        const currentLeverID = data.transaction.transaction_data.block_runtime_id
+        const leverKey = data.transaction.transaction_data.block_position.x.toString() + "_" + data.transaction.transaction_data.block_position.y.toString() + "_" + data.transaction.transaction_data.block_position.z.toString()
+
+        // If it is a vote lever
+        if (Object.keys(snifferVoteLevers).includes(leverKey) || Object.keys(rascalVoteLevers).includes(leverKey) || Object.keys(tuffVoteLevers).includes(leverKey)) {
+          client.queue('level_sound_event', {"sound_id":"PowerOn","position":data.position,"extra_data":null,"entity_type":"","is_baby_mob":false,"is_global":false})
+          client.queue('update_block', {"position":data.position,"block_runtime_id":currentLeverID,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+        }
+      }
+    })
+
+    client.on('player_action', (data) => {
+      if (data.action === 'start_item_use_on') {
+        // do nothing
       }
     })
 
@@ -222,10 +284,6 @@ module.exports = function (server, serverData) {
       commandData = data.command.split(' ')
       try {
         switch (commandData[0]) {
-          case "/formtest":
-            const formData = { "buttons": [{ "image": null, "text": "Close window" }], "content": "1. 0.05 - Me\n2. 0.05 - Also me\n3. 0.05 - This is a test\n4. 0.05 - These aren't real players\n5. 0.05 - Me\n6. 0.05 - Also me\n7. 0.05 - This is a test\n8. 0.05 - These aren't real players\n9.\n10.\n\n\n", "title": "Dropper Leaderboard", "type": "form" }
-            client.queue("modal_form_request", { "form_id": 3, "data": JSON.stringify(formData) })
-            break
         }
       } catch (e) {
         console.error(e)
