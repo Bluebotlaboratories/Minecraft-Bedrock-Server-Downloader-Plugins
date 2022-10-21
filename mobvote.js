@@ -6,10 +6,12 @@ const fs = require('fs');
 // 
 // TODO:
 // - [ ] Implement Voting
-//   - [ ] Implement Lever and Button interaction
+//   - [ ] Implement Lever interaction
 //   - [ ] Implement Vote Data Saving
 //   - [ ] Implement Vote Response
 // - [ ] Implement Parkour
+//   - [ ] Implement Lever interaction
+//   - [ ] Implement Button interaction
 //   - [ ] Implement queue System
 //   - [ ] Implement waypoint detection
 //   - [ ] Implement timer
@@ -42,7 +44,34 @@ module.exports = function (server, serverData) {
     var pluginConfig = JSON.parse(fs.readFileSync("./plugins/mobvote/config.json"))
   } catch {
     var pluginConfig = {
-      version: 1
+      version: 2,
+      rascalVoteInitialLeverStates: {
+        // RASCAL
+        "23_-22_5": true,
+        "23_-22_6": true,
+        "23_-22_7": true,
+        "23_-22_10": true,
+        "23_-22_11": true,
+        "23_-22_12": true,
+      },
+      tuffVoteInitialLeverStates: {
+        // TUFF
+        "19_-22_16": false,
+        "18_-22_16": true,
+        "17_-22_16": true,
+        "14_-22_16": false,
+        "13_-22_16": true,
+        "12_-22_16": false,
+      },
+      snifferVoteInitialLeverStates: {
+        // SNIFFER
+        "8_-22_12": false,
+        "8_-22_11": false,
+        "8_-22_10": false,
+        "8_-22_7": false,
+        "8_-22_6": false,
+        "8_-22_5": true,
+      }
     }
     fs.writeFileSync("./plugins/mobvote/config.json", JSON.stringify(pluginConfig))
   }
@@ -85,57 +114,48 @@ module.exports = function (server, serverData) {
     })
 
     client.on("inventory_transaction", (data) => {
-      console.log("INV_TRANSAC",data.transaction.transaction_data.block_position)
-
+      console.log("INV TRANSAC",data)
       if (data.transaction.transaction_type === 'item_use') {
-        rascalVoteLevers = {
-          // RASCAL
-          "23_-22_5": true,
-          "23_-22_6": true,
-          "23_-22_7": true,
-          "23_-22_10": true,
-          "23_-22_11": true,
-          "23_-22_12": true,
-        }
-        tuffVoteLevers = {
-          // TUFF
-          "19_-22_16": false,
-          "18_-22_16": true,
-          "17_-22_16": true,
-          "14_-22_16": false,
-          "13_-22_16": true,
-          "12_-22_16": false,
-        }
-        snifferVoteLevers = {
-          // SNIFFER
-          "8_-22_12": false,
-          "8_-22_11": false,
-          "8_-22_10": false,
-          "8_-22_7": false,
-          "8_-22_6": false,
-          "8_-22_5": true,
-        }
-
-        snifferVoteLeverIDs = [
-          6570,
-          6562
-        ]
-        tuffVoteLeverIDs = [
-          6561,
-          6569
-        ]
-        rascalVoteLeverIDs = [
-          6562,
-          6570
-        ]
-
-        const currentLeverID = data.transaction.transaction_data.block_runtime_id
-        const leverKey = data.transaction.transaction_data.block_position.x.toString() + "_" + data.transaction.transaction_data.block_position.y.toString() + "_" + data.transaction.transaction_data.block_position.z.toString()
-
         // If it is a vote lever
-        if (Object.keys(snifferVoteLevers).includes(leverKey) || Object.keys(rascalVoteLevers).includes(leverKey) || Object.keys(tuffVoteLevers).includes(leverKey)) {
-          client.queue('level_sound_event', {"sound_id":"PowerOn","position":data.position,"extra_data":null,"entity_type":"","is_baby_mob":false,"is_global":false})
-          client.queue('update_block', {"position":data.position,"block_runtime_id":currentLeverID,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+        if (Object.keys(pluginConfig.snifferVoteInitialLeverStates).includes(leverKey) || Object.keys(pluginConfig.rascalVoteInitialLeverStates).includes(leverKey) || Object.keys(pluginConfig.tuffVoteInitialLeverStates).includes(leverKey)) {
+          // Define lever IDs (0=off, 1=on)
+          snifferVoteLeverIDs = [
+            6570,
+            6562
+          ]
+          tuffVoteLeverIDs = [
+            6561,
+            6569
+          ]
+          rascalVoteLeverIDs = [
+            6562,
+            6570
+          ]
+  
+          // Bit shift y-coordinate to fix deserialization error
+          data.transaction.transaction_data.block_position.y = data.transaction.transaction_data.block_position.y << 1
+
+          // Get the lever's initial state from the config
+          const leverKey = data.transaction.transaction_data.block_position.x.toString() + "_" + data.transaction.transaction_data.block_position.y.toString() + "_" + data.transaction.transaction_data.block_position.z.toString()
+
+          // Define variables and update lever state (do not save to file as level changes are not persisstent)
+          if (Object.keys(pluginConfig.snifferVoteInitialLeverStates).includes(leverKey)) {
+            pluginConfig.snifferVoteInitialLeverStates[leverKey] = !pluginConfig.snifferVoteInitialLeverStates[leverKey]
+            var leverStateID = snifferVoteLeverIDs[Number(pluginConfig.snifferVoteInitialLeverStates[leverKey])]
+            var leverSound = pluginConfig.snifferVoteInitialLeverStates[leverKey] ? "PowerOn" : "PowerOff"
+          } else if (Object.keys(pluginConfig.tuffVoteInitialLeverStates).includes(leverKey)) {
+            pluginConfig.tuffVoteInitialLeverStates[leverKey] = !pluginConfig.tuffVoteInitialLeverStates[leverKey]
+            var leverStateID = tuffVoteLeverIDs[Number(pluginConfig.tuffVoteInitialLeverStates[leverKey])]
+            var leverSound = pluginConfig.tuffVoteInitialLeverStates[leverKey] ? "PowerOn" : "PowerOff"
+          } else if (Object.keys(pluginConfig.rascalVoteInitialLeverStates).includes(leverKey)) {
+            pluginConfig.rascalVoteInitialLeverStates[leverKey] = !pluginConfig.rascalVoteInitialLeverStates[leverKey]
+            var leverStateID = rascalVoteLeverIDs[Number(pluginConfig.rascalVoteInitialLeverStates[leverKey])]
+            var leverSound = pluginConfig.rascalVoteInitialLeverStates[leverKey] ? "PowerOn" : "PowerOff"
+          }
+
+          // Send packets to client
+          client.queue('level_sound_event', {"sound_id":leverSound,"position":data.transaction.transaction_data.block_position,"extra_data":null,"entity_type":"","is_baby_mob":false,"is_global":false})
+          client.queue('update_block', {"position":data.transaction.transaction_data.block_position,"block_runtime_id":leverStateID,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
         }
       }
     })
