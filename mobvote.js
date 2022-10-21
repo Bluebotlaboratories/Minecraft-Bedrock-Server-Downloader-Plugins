@@ -11,13 +11,16 @@ module.exports = function (server, serverData) {
   try {
     var pluginConfig = JSON.parse(fs.readFileSync("./plugins/mobvote/config.json"))
   } catch {
-    var pluginConfig = {}
+    var pluginConfig = {
+      version: 1
+    }
     fs.writeFileSync("./plugins/mobvote/config.json", JSON.stringify(pluginConfig))
   }
   try {
     var pluginData = JSON.parse(fs.readFileSync("./plugins/mobvote/data.json"))
   } catch {
     var pluginData = {
+      version: 1,
       sniffer_parkour_leaderboard: [],
       tuffgolem_parkour_leaderboard: [],
       rascal_parkour_leaderboard: [],
