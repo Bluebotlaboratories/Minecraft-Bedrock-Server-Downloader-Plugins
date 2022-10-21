@@ -9,19 +9,20 @@ module.exports = function (server, serverData) {
     fs.mkdirSync("./plugins/mobvote/")
   } catch {}
   try {
-    var pluginConfig = fs.readFileSync("./plugins/mobvote/config.json")
+    var pluginConfig = JSON.parse(fs.readFileSync("./plugins/mobvote/config.json"))
   } catch {
     var pluginConfig = {}
     fs.writeFileSync("./plugins/mobvote/config.json", JSON.stringify(pluginConfig))
   }
   try {
-    var pluginData = fs.readFileSync("./plugins/mobvote/data.json")
+    var pluginData = JSON.parse(fs.readFileSync("./plugins/mobvote/data.json"))
   } catch {
     var pluginData = {
       sniffer_parkour_leaderboard: [],
       tuffgolem_parkour_leaderboard: [],
       rascal_parkour_leaderboard: [],
       dropper_parkour_leaderboard: [],
+      arena_loaderboard: [],
       sniffer_votes: [],
       tuffgolem_votes: [],
       rascal_votes: []
@@ -38,13 +39,9 @@ module.exports = function (server, serverData) {
       }
     })
 
-    client.on('level_sound_event', (data) => {
-      console.log(data)
-    })
-
     client.on('npc_request', (data) => {
       // Get entity data from entity id
-      const entityData = serverData.entities[data.runtime_entity_id]
+      entityData = serverData.entities[data.runtime_entity_id]
 
       // Get NPC "actorID"
       const actorID = Long.fromString(entityData.unique_id)
@@ -97,19 +94,51 @@ module.exports = function (server, serverData) {
           NPCCommandData = JSON.parse(NPCCommandData.value.replaceAll('\\n', ''))[data.action_type]
           const sceneName = NPCCommandData.data[0].cmd_line.split(' ').reverse()[0] // Get "scene" name from the command data
 
-          //client.queue("npc_dialogue", {"entity_id":actorIDList,"action_type":2,"dialogue":"","screen_name":"","npc_name":"","action_json":""}) (closes the dialogue box)
+          //client.queue("npc_dialogue", {"entity_id":actorIDList,"action_type":2,"dialogue":"","screen_name":"","npc_name":"","action_json":""}) // (closes the dialogue box)
           client.queue("npc_dialogue", Object.assign({ "entity_id": actorIDList }, sceneData[sceneName]))
         } else if (data.action_type === 1) {
-          console.log("Sending form request")
-          // Close NPC's dialog first
-          client.queue("npc_dialogue", { "entity_id": actorIDList, "action_type": 2, "dialogue": "", "screen_name": "", "npc_name": "", "action_json": "" })
+          // Close NPC's dialog first (use client.write so that when the form is displayed the NPC dialogue is completely closed)
+          client.write("npc_dialogue", { "entity_id": actorIDList, "action_type": 2, "dialogue": "", "screen_name": "", "npc_name": "", "action_json": "" })
 
-          // Wait for dialogue to be completely closed or it doesn't work
+          const npcLeaderboardDataMap = {
+            "mv:parkour_jens": "sniffer_parkour_leaderboard",
+            "mv:arena_jens": "arena_loaderboard",
+            "mv:parkour_vu": "tuffgolem_parkour_leaderboard",
+            "mv:parkour_agnes": "rascal_parkour_leaderboard",
+            "mv:dropper_agnes": "dropper_parkour_leaderboard"
+          }
+          
+          const leaderboardLangMap = {
+            "mv:parkour_jens": "bb.leaderboard.parkour",
+            "mv:arena_jens": "bb.leaderboard.arena",
+            "mv:parkour_vu": "bb.leaderboard.parkour",
+            "mv:parkour_agnes": "bb.leaderboard.parkour",
+            "mv:dropper_agnes": "bb.leaderboard.dropper"
+          }
+
+          // Get string leaderboard format from data
+          const leaderboardData = pluginData[npcLeaderboardDataMap[entityData.entity_type]]
+
+          if (leaderboardData.length > 0) {
+            var leaderboardString = ""
+            var i = 1
+            for (const player of leaderboardData) {
+              leaderboardString += i.toString() + ". " + player.scoreData + " - " + player.username + "\n"
+              i++
+            }
+
+            // Only 12 lines, use 13 bc i starts at 1
+            leaderboardString += "\n".repeat(13-i)
+            //leaderboardString += "\n\n\n"
+          } else {
+            var leaderboardString = "bb.leaderboard.none"
+          }
+
           setTimeout(() => {
             // Send leaderboard form
-            const formData = { "buttons": [{ "image": null, "text": "Close window" }], "content": "1. 0.05 - Test\n2.\n3.\n4.\n5.\n6.\n7.\n8.\n9.\n10.\n\n\n", "title": "Dropper Leaderboard", "type": "form" }
+            const formData = { "buttons": [{ "image": null, "text": "bb.leaderboard.button.close" }], "content": leaderboardString, "title": leaderboardLangMap[entityData.entity_type], "type": "form" }
             client.queue("modal_form_request", { "form_id": 3, "data": JSON.stringify(formData) })
-          }, 500)
+          }, 100) // (Wait 100ms just to be safe)
         } else if (data.action_type === 0) {
           // TODO: Implement queues
         }
