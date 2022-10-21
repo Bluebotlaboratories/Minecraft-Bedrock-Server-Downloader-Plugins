@@ -1,6 +1,36 @@
 const Long = require('long');
 const fs = require('fs');
 
+// MobVote server plugin
+// Copyright Bluebotlaboratories 2022-
+// 
+// TODO:
+// - Implement Voting
+//   - Implement Lever and Button interaction
+//   - Implement Vote Data Saving
+//   - Implement Vote Response
+// - Implement Parkour
+//   - Implement queue System
+//   - Implement waypoint detection
+//   - Implement timer
+//   - Implement display system
+//   - Implement leaderboard writing system
+// - Implement Arena
+//   - Implement zombie & skeleton spawning
+//   - Implement zombie AI
+//   - Implement player damage and death
+//   - Implement arrows
+//   - Implement skeleton AI (aimbot)
+//   - Implement skeleton animation
+//   - Implement zombie and skeleton damage and death
+//   - Implement burning and cooling
+//   - Implement points
+//   - Implement item buying via points
+//   - Implement potions
+//   - Implement gapples
+//   - Implement different swords
+//   - Implement creepers
+
 module.exports = function (server, serverData) {
   console.log("Mob Vote plugin loaded")
 
@@ -24,13 +54,25 @@ module.exports = function (server, serverData) {
       sniffer_parkour_leaderboard: [],
       tuffgolem_parkour_leaderboard: [],
       rascal_parkour_leaderboard: [],
-      dropper_parkour_leaderboard: [],
-      arena_loaderboard: [],
+      dropper_leaderboard: [],
+      arena_leaderboard: [],
       sniffer_votes: [],
       tuffgolem_votes: [],
       rascal_votes: []
     }
     fs.writeFileSync("./plugins/mobvote/data.json", JSON.stringify(pluginData))
+  }
+
+  // Store runtime data
+  var tmpPluginData = {
+    sniffer_parkour_queue: [],
+    tuffgolem_parkour_queue: [],
+    rascal_parkour_queue: [],
+    dropper_queue: [],
+    sniffer_parkour_data: [],
+    tuffgolem_parkour_data: [],
+    rascal_parkour_data: [],
+    dropper_data: [],
   }
 
   server.on('connect', client => {
@@ -105,10 +147,10 @@ module.exports = function (server, serverData) {
 
           const npcLeaderboardDataMap = {
             "mv:parkour_jens": "sniffer_parkour_leaderboard",
-            "mv:arena_jens": "arena_loaderboard",
+            "mv:arena_jens": "arena_leaderboard",
             "mv:parkour_vu": "tuffgolem_parkour_leaderboard",
             "mv:parkour_agnes": "rascal_parkour_leaderboard",
-            "mv:dropper_agnes": "dropper_parkour_leaderboard"
+            "mv:dropper_agnes": "dropper_leaderboard"
           }
           
           const leaderboardLangMap = {
