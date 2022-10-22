@@ -42,7 +42,7 @@ const fs = require('fs');
 module.exports = function (server, serverData) {
   console.log("Mob Vote plugin loaded")
 
-  const configVersion = 3
+  const configVersion = 4
   const dataVersion = 2
 
   // Create config file if they don't exist
@@ -98,7 +98,9 @@ module.exports = function (server, serverData) {
         "16_0_39": { "state": false, "facing": 0, type: "tuff"},
         // SNIFFER
         "-17_4_8": { "state": true, "facing": 1, type: "sniffer"},
-      }
+      },
+      parkourMaxPlayers: 1, // Max players that can parkour in one "session"
+      dropperGlassOpenTime: 1000, // Time that dropper glass remains only in ms
     }
     fs.writeFileSync("./plugins/mobvote/config.json", JSON.stringify(pluginConfig))
   }
