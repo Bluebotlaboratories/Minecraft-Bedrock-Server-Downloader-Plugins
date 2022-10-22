@@ -109,11 +109,11 @@ module.exports = function (server, serverData) {
     }
   } catch {
     var pluginData = {
-      version: 1,
+      version: 2,
       sniffer_parkour_leaderboard: [],
       tuffgolem_parkour_leaderboard: [],
       rascal_parkour_leaderboard: [],
-      dropper_leaderboard: [],
+      dropper_scores: {},
       arena_leaderboard: [],
       sniffer_votes: [],
       tuffgolem_votes: [],
@@ -147,7 +147,8 @@ module.exports = function (server, serverData) {
         tmpPluginData.playerData[client.profile.xuid] = {
           dropper: {
             timerActive: false,
-            timerCount: 0,
+            timerStart: 0,
+            timerEnd: 0,
             timerID: null
           }
         }
@@ -414,13 +415,12 @@ module.exports = function (server, serverData) {
           case "/starttimer":
             if (!tmpPluginData.playerData[client.profile.xuid].dropper.timerActive) {
               tmpPluginData.playerData[client.profile.xuid].dropper.timerActive = true
-              tmpPluginData.playerData[client.profile.xuid].dropper.timerCount = 0
+              tmpPluginData.playerData[client.profile.xuid].dropper.timerStart = Date.now()
 
               tmpPluginData.playerData[client.profile.xuid].dropper.timerID = setInterval(() => {
-                tmpPluginData.playerData[client.profile.xuid].dropper.timerCount += 100
-                const timerText = {"rawtext":[{"translate":"bb.dropper.actionbar.time"},{"text":" "},{"text": (tmpPluginData.playerData[client.profile.xuid].dropper.timerCount/1000).toString() }]}
+                const timerText = {"rawtext":[{"translate":"bb.dropper.actionbar.time"},{"text":" "},{"text": ((Date.now() - tmpPluginData.playerData[client.profile.xuid].dropper.timerStart)/1000).toFixed(1) }]}
                 client.queue("set_title", {"type":"action_bar_message_json","text":JSON.stringify(timerText),"fade_in_time":-1,"stay_time":-1,"fade_out_time":-1,"xuid":"","platform_online_id":""})
-              }, 100)
+              }, 10)
             }
             break
           case "/stoptimer":
