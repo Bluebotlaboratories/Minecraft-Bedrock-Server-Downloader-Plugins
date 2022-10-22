@@ -10,7 +10,7 @@ const fs = require('fs');
 //   - [x] Implement Vote Data Saving
 //   - [x] Implement Vote Response
 // - [ ] Implement Dropper
-//   - [ ] Implement timer start and stop
+//   - [x] Implement timer start and stop
 //   - [ ] Implement leaderboard saving
 //   - [ ] Implement teleportation
 //   - [ ] Implement glass floor opening
@@ -132,6 +132,7 @@ module.exports = function (server, serverData) {
     tuffgolem_parkour_data: [],
     rascal_parkour_data: [],
     dropper_data: [],
+    playerData: {},
   }
 
 
@@ -142,15 +143,14 @@ module.exports = function (server, serverData) {
         // Show join title
         client.queue("set_title", { "type": "set_durations", "text": "", "fade_in_time": 5, "stay_time": 60, "fade_out_time": 5, "xuid": "", "platform_online_id": "" })
         client.queue("set_title", { "type": "set_title_json", "text": "{\"rawtext\":[{\"translate\":\"bb.entry.title\"}]}\n", "fade_in_time": -1, "stay_time": -1, "fade_out_time": -1, "xuid": "", "platform_online_id": "" })
-        console.log(JSON.stringify(client, (key, value) => {
-          if (key === 'server' || key === '_idlePrev' || key === '_idleNext') {
-            return null
-          } else if (typeof value === 'bigint') {
-            return String(value)
-          } else {
-            return value
+        
+        tmpPluginData.playerData[client.profile.xuid] = {
+          dropper: {
+            timerActive: false,
+            timerCount: 0,
+            timerID: null
           }
-        }))
+        }
       }
     })
 
@@ -411,6 +411,23 @@ module.exports = function (server, serverData) {
       commandData = data.command.split(' ')
       try {
         switch (commandData[0]) {
+          case "/starttimer":
+            if (!tmpPluginData.playerData[client.profile.xuid].dropper.timerActive) {
+              tmpPluginData.playerData[client.profile.xuid].dropper.timerActive = true
+              tmpPluginData.playerData[client.profile.xuid].dropper.timerCount = 0
+
+              tmpPluginData.playerData[client.profile.xuid].dropper.timerID = setInterval(() => {
+                tmpPluginData.playerData[client.profile.xuid].dropper.timerCount += 100
+                const timerText = {"rawtext":[{"translate":"bb.dropper.actionbar.time"},{"text":" "},{"text": (tmpPluginData.playerData[client.profile.xuid].dropper.timerCount/1000).toString() }]}
+                client.queue("set_title", {"type":"action_bar_message_json","text":JSON.stringify(timerText),"fade_in_time":-1,"stay_time":-1,"fade_out_time":-1,"xuid":"","platform_online_id":""})
+              }, 100)
+            }
+            break
+          case "/stoptimer":
+            if (tmpPluginData.playerData[client.profile.xuid].dropper.timerActive) {
+              clearInterval(tmpPluginData.playerData[client.profile.xuid].dropper.timerID)
+            }
+            break
         }
       } catch (e) {
         console.error(e)
