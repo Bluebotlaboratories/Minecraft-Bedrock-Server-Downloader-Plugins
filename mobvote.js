@@ -5,10 +5,10 @@ const fs = require('fs');
 // Copyright Bluebotlaboratories 2022-
 // 
 // TODO:
-// - [ ] Implement Voting
-//   - [ ] Implement Lever interaction
-//   - [ ] Implement Vote Data Saving
-//   - [ ] Implement Vote Response
+// - [x] Implement Voting
+//   - [x] Implement Lever interaction
+//   - [x] Implement Vote Data Saving
+//   - [x] Implement Vote Response
 // - [ ] Implement Parkour
 //   - [ ] Implement Lever interaction
 //   - [ ] Implement Button interaction
@@ -84,6 +84,14 @@ module.exports = function (server, serverData) {
         "8_-22_6": { "state": false, "facing": 3},
         "8_-22_5": { "state": true, "facing": 3},
         "-11_-24_-21": { "state": false, "facing": 3},
+      },
+      parkourInitialLeverStates: {
+        // RASCAL
+        "33_2_8": { "state": false, "facing": 3, type: "rascal"},
+        // TUFF
+        "16_0_39": { "state": false, "facing": 0, type: "tuff"},
+        // SNIFFER
+        "-17_4_8": { "state": true, "facing": 1, type: "sniffer"},
       }
     }
     fs.writeFileSync("./plugins/mobvote/config.json", JSON.stringify(pluginConfig))
@@ -128,6 +136,15 @@ module.exports = function (server, serverData) {
         // Show join title
         client.queue("set_title", { "type": "set_durations", "text": "", "fade_in_time": 5, "stay_time": 60, "fade_out_time": 5, "xuid": "", "platform_online_id": "" })
         client.queue("set_title", { "type": "set_title_json", "text": "{\"rawtext\":[{\"translate\":\"bb.entry.title\"}]}\n", "fade_in_time": -1, "stay_time": -1, "fade_out_time": -1, "xuid": "", "platform_online_id": "" })
+        console.log(JSON.stringify(client, (key, value) => {
+          if (key === 'server' || key === '_idlePrev' || key === '_idleNext') {
+            return null
+          } else if (typeof value === 'bigint') {
+            return String(value)
+          } else {
+            return value
+          }
+        }))
       }
     })
 
@@ -169,26 +186,77 @@ module.exports = function (server, serverData) {
             pluginConfig.snifferVoteInitialLeverStates[leverKey].state = !pluginConfig.snifferVoteInitialLeverStates[leverKey].state
             var leverStateID = leverIDs[pluginConfig.snifferVoteInitialLeverStates[leverKey].facing][Number(pluginConfig.snifferVoteInitialLeverStates[leverKey].state)]
             var leverSound = pluginConfig.snifferVoteInitialLeverStates[leverKey].state ? "PowerOn" : "PowerOff"
-            var voteText = {"rawtext":[{"translate":"bb.vote.sniffer"}]}
+
+            // Save vote data
+            var voteSubtitle = {"rawtext":[{"translate":"bb.vote.sniffer"}]}
+            if (pluginData.sniffer_votes.includes(client.profile.xuid)) {
+              var voteTitle = {"rawtext":[{"translate":"bb.vote.already_voted"}]}
+            } else if (pluginData.rascal_votes.includes(client.profile.xuid)) {
+              pluginData.rascal_votes.splice( pluginData.rascal_votes.indexOf(client.profile.xuid), 1 ) // Delete vote
+              pluginData.sniffer_votes.push(client.profile.xuid) // Add new vote
+              var voteTitle = {"rawtext":[{"translate":"bb.vote.change_vote"}]}
+            } else if (pluginData.tuffgolem_votes.includes(client.profile.xuid)) {
+              pluginData.tuffgolem_votes.splice( pluginData.tuffgolem_votes.indexOf(client.profile.xuid), 1 ) // Delete vote
+              pluginData.sniffer_votes.push(client.profile.xuid) // Add new vote
+              var voteTitle = {"rawtext":[{"translate":"bb.vote.change_vote"}]}
+            } else {
+              pluginData.sniffer_votes.push(client.profile.xuid) // Add new vote
+              var voteTitle = {"rawtext":[{"translate":"bb.vote.voted"}]}
+            }
           } else if (Object.keys(pluginConfig.tuffVoteInitialLeverStates).includes(leverKey)) {
             pluginConfig.tuffVoteInitialLeverStates[leverKey].state = !pluginConfig.tuffVoteInitialLeverStates[leverKey].state
             var leverStateID = leverIDs[pluginConfig.tuffVoteInitialLeverStates[leverKey].facing][Number(pluginConfig.tuffVoteInitialLeverStates[leverKey].state)]
             var leverSound = pluginConfig.tuffVoteInitialLeverStates[leverKey].state ? "PowerOn" : "PowerOff"
-            var voteText = {"rawtext":[{"translate":"bb.vote.golem"}]}
+
+            // Save vote data
+            var voteSubtitle = {"rawtext":[{"translate":"bb.vote.golem"}]}
+            if (pluginData.sniffer_votes.includes(client.profile.xuid)) {
+              pluginData.sniffer_votes.splice( pluginData.sniffer_votes.indexOf(client.profile.xuid), 1 ) // Delete vote
+              pluginData.tuffgolem_votes.push(client.profile.xuid) // Add new vote
+              var voteTitle = {"rawtext":[{"translate":"bb.vote.change_vote"}]}
+            } else if (pluginData.rascal_votes.includes(client.profile.xuid)) {
+              pluginData.rascal_votes.splice( pluginData.rascal_votes.indexOf(client.profile.xuid), 1 ) // Delete vote
+              pluginData.tuffgolem_votes.push(client.profile.xuid) // Add new vote
+              var voteTitle = {"rawtext":[{"translate":"bb.vote.change_vote"}]}
+            } else if (pluginData.tuffgolem_votes.includes(client.profile.xuid)) {
+              var voteTitle = {"rawtext":[{"translate":"bb.vote.already_voted"}]} // Already voted
+            } else {
+              pluginData.tuffgolem_votes.push(client.profile.xuid) // Add new vote
+              var voteTitle = {"rawtext":[{"translate":"bb.vote.voted"}]}
+            }
           } else if (Object.keys(pluginConfig.rascalVoteInitialLeverStates).includes(leverKey)) {
             pluginConfig.rascalVoteInitialLeverStates[leverKey].state = !pluginConfig.rascalVoteInitialLeverStates[leverKey].state
             var leverStateID = leverIDs[pluginConfig.rascalVoteInitialLeverStates[leverKey].facing][Number(pluginConfig.rascalVoteInitialLeverStates[leverKey].state)]
             var leverSound = pluginConfig.rascalVoteInitialLeverStates[leverKey].state ? "PowerOn" : "PowerOff"
-            var voteText = {"rawtext":[{"translate":"bb.vote.rascal"}]}
+
+            // Save vote data
+            var voteSubtitle = {"rawtext":[{"translate":"bb.vote.rascal"}]}
+            if (pluginData.sniffer_votes.includes(client.profile.xuid)) {
+              pluginData.sniffer_votes.splice( pluginData.sniffer_votes.indexOf(client.profile.xuid), 1 ) // Delete vote
+              pluginData.rascal_votes.push(client.profile.xuid) // Add new vote
+              var voteTitle = {"rawtext":[{"translate":"bb.vote.change_vote"}]}
+            } else if (pluginData.rascal_votes.includes(client.profile.xuid)) {
+              var voteTitle = {"rawtext":[{"translate":"bb.vote.already_voted"}]} // Already votes
+            } else if (pluginData.tuffgolem_votes.includes(client.profile.xuid)) {
+              pluginData.tuffgolem_votes.splice( pluginData.tuffgolem_votes.indexOf(client.profile.xuid), 1 ) // Delete vote
+              pluginData.rascal_votes.push(client.profile.xuid) // Add new vote
+              var voteTitle = {"rawtext":[{"translate":"bb.vote.change_vote"}]}
+            } else {
+              pluginData.rascal_votes.push(client.profile.xuid) // Add new vote
+              var voteTitle = {"rawtext":[{"translate":"bb.vote.voted"}]}
+            }
           }
+
+          // Save data
+          fs.writeFileSync("./plugins/mobvote/data.json", JSON.stringify(pluginData))
 
           // Send packets to client
           client.queue('level_sound_event', {"sound_id":leverSound,"position":data.transaction.transaction_data.block_position,"extra_data":null,"entity_type":"","is_baby_mob":false,"is_global":false})
           client.queue('update_block', {"position":data.transaction.transaction_data.block_position,"block_runtime_id":leverStateID,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
 
           client.queue("set_title", { "type": "set_durations", "text": "", "fade_in_time": 5, "stay_time": 60, "fade_out_time": 5, "xuid": "", "platform_online_id": "" })
-          client.queue("set_title", { "type": "set_subtitle_json", "text": JSON.stringify(voteText), "fade_in_time":-1, "stay_time":-1, "fade_out_time":-1, "xuid":"", "platform_online_id":"" })
-          client.queue("set_title", { "type": "set_title_json", "text": "{\"rawtext\":[{\"translate\":\"bb.vote.voted\"}]}", "fade_in_time": -1, "stay_time": -1, "fade_out_time": -1, "xuid": "", "platform_online_id": "" })
+          client.queue("set_title", { "type": "set_subtitle_json", "text": JSON.stringify(voteSubtitle), "fade_in_time":-1, "stay_time":-1, "fade_out_time":-1, "xuid":"", "platform_online_id":"" })
+          client.queue("set_title", { "type": "set_title_json", "text": JSON.stringify(voteTitle), "fade_in_time": -1, "stay_time": -1, "fade_out_time": -1, "xuid": "", "platform_online_id": "" })
         }
       }
     })
