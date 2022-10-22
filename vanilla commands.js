@@ -27,17 +27,18 @@ module.exports = function (server, serverData) {
                 case "/gamemode":
                   console.log(data.origin)
                   client.queue("set_player_game_type", {"gamemode":commandData[1]})
-                  //client.queue("update_player_game_type", {"gamemode":commandData[1],"player_unique_id":serverData.players[client.profile.uuid].entity_id})
                   client.queue("command_output", {"origin":{"type":"player","uuid":client.profile.uuid,"request_id":""},"output_type":"all","success_count":1,"output":[{"success":true,"message_id":"commands.gamemode.success.self","parameters":["%createWorldScreen.gameMode." + commandData[1].toLowerCase()]}]})
                   break
                 case "/tp":
                   client.queue("move_player", {"runtime_id":serverData.players[client.profile.uuid].runtime_entity_id,"position":{"x":commandData[1],"y":commandData[2],"z":commandData[3]},"pitch":0,"yaw":0,"head_yaw":0,"mode":"teleport","on_ground":false,"ridden_runtime_id":0,"teleport":{"cause":"command","source_entity_type":1},"tick":"0"})
                   client.queue("command_output", {"origin":{"type":"player","uuid":data.origin.uuid,"request_id":""},"output_type":"all","success_count":1,"output":[{"success":true,"message_id":"commands.tp.success.coordinates","parameters":[client.profile.name, commandData[1], commandData[2], commandData[3]]}]})
                   break
-                case "/sunset":
-                  setInterval(() => {
-                    client.queue("set_time", {"time": Date.now()*100})
-                  }, 10)
+                case "/time":
+                  switch (commandData[1]) {
+                    case "set":
+                      client.queue("set_time", {"time": Number.parseInt(commandData[2])})
+                      break
+                  }
                   break
               }
             } catch (e) {
