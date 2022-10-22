@@ -9,6 +9,12 @@ const fs = require('fs');
 //   - [x] Implement Lever interaction
 //   - [x] Implement Vote Data Saving
 //   - [x] Implement Vote Response
+// - [ ] Implement Dropper
+//   - [ ] Implement timer start and stop
+//   - [ ] Implement leaderboard saving
+//   - [ ] Implement teleportation
+//   - [ ] Implement glass floor opening
+//   - [ ] Implement y-coordinate threshold detection
 // - [ ] Implement Parkour
 //   - [ ] Implement Lever interaction
 //   - [ ] Implement Button interaction
