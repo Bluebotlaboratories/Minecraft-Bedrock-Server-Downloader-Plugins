@@ -9,11 +9,11 @@ const fs = require('fs');
 //   - [x] Implement Lever interaction
 //   - [x] Implement Vote Data Saving
 //   - [x] Implement Vote Response
-// - [ ] Implement Dropper
+// - [~] Implement Dropper
 //   - [ ] Implement queue sounds
 //   - [ ] Implement glass sounds
 //   - [x] Implement timer start and stop
-//   - [ ] Implement leaderboard saving
+//   - [x] Implement leaderboard saving
 //   - [x] Implement teleportation
 //   - [x] Implement glass floor opening
 //   - [x] Implement y-coordinate threshold detection
@@ -340,15 +340,7 @@ module.exports = function (server, serverData) {
           // Close NPC's dialog first (use client.write so that when the form is displayed the NPC dialogue is completely closed)
           client.write("npc_dialogue", { "entity_id": actorIDList, "action_type": 2, "dialogue": "", "screen_name": "", "npc_name": "", "action_json": "" })
 
-          const npcLeaderboardDataMap = {
-            "mv:parkour_jens": "sniffer_parkour_leaderboard",
-            "mv:arena_jens": "arena_leaderboard",
-            "mv:parkour_vu": "tuffgolem_parkour_leaderboard",
-            "mv:parkour_agnes": "rascal_parkour_leaderboard",
-            "mv:dropper_agnes": "dropper_leaderboard"
-          }
-          
-          const leaderboardLangMap = {
+          var leaderboardLangMap = {
             "mv:parkour_jens": "bb.leaderboard.parkour",
             "mv:arena_jens": "bb.leaderboard.arena",
             "mv:parkour_vu": "bb.leaderboard.parkour",
@@ -356,8 +348,36 @@ module.exports = function (server, serverData) {
             "mv:dropper_agnes": "bb.leaderboard.dropper"
           }
 
-          // Get string leaderboard format from data
-          const leaderboardData = pluginData[npcLeaderboardDataMap[entityData.entity_type]]
+          if (entityData.entity_type === "mv:dropper_agnes") {
+            var leaderboardData = []
+
+            for (const scoreXuid in pluginData.dropper_scores) {
+              leaderboardData.push(pluginData.dropper_scores[scoreXuid])
+            }
+
+            // Sort leaderboard data
+            // Def not stolen from https://stackoverflow.com/questions/979256/sorting-an-array-of-objects-by-property-values
+            // Actually stolen from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort
+            leaderboardData.sort((a, b) => {
+              return (a.scoreData - b.scoreData)
+            })
+
+            leaderboardData = leaderboardData.slice(0, 10+1) // +1 bc index
+
+            for (var scoreData of leaderboardData) {
+              scoreData.scoreData = (scoreData.scoreData/1000).toFixed(2)
+            }
+          } else {
+            var npcLeaderboardDataMap = {
+              "mv:parkour_jens": "sniffer_parkour_leaderboard",
+              "mv:arena_jens": "arena_leaderboard",
+              "mv:parkour_vu": "tuffgolem_parkour_leaderboard",
+              "mv:parkour_agnes": "rascal_parkour_leaderboard",
+              "mv:dropper_agnes": "dropper_leaderboard"
+            }
+            // Get string leaderboard format from data
+            var leaderboardData = pluginData[npcLeaderboardDataMap[entityData.entity_type]]
+          }
 
           if (leaderboardData.length > 0) {
             var leaderboardString = ""
@@ -472,7 +492,13 @@ module.exports = function (server, serverData) {
         client.queue("set_title", {"type":"action_bar_message_json","text":JSON.stringify({"rawtext":[{"translate":"bb.dropper.actionbar.personal_best"}]}),"fade_in_time":-1,"stay_time":-1,"fade_out_time":-1,"xuid":"","platform_online_id":""})
 
         // Write time to data
-        pluginData.dropper_scores[client.profile.xuid] = timerTime // REMEMBER: It is in ms
+        pluginData.dropper_scores[client.profile.xuid] = {
+          username: client.profile.name,
+          uuid: client.profile.uuid,
+          scoreData: timerTime  // REMEMBER: It is in ms
+        }
+
+        fs.writeFileSync("./plugins/mobvote/data.json", JSON.stringify(pluginData))
       }
     })
 
