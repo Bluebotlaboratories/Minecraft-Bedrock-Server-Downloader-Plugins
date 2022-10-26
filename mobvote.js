@@ -17,6 +17,7 @@ const fs = require('fs');
 //   - [x] Implement teleportation
 //   - [x] Implement glass floor opening
 //   - [x] Implement y-coordinate threshold detection
+//   - [x] Implement losing
 // - [ ] Implement Parkour
 //   - [ ] Implement Lever interaction
 //   - [ ] Implement Button interaction
@@ -44,8 +45,8 @@ const fs = require('fs');
 module.exports = function (server, serverData) {
   console.log("Mob Vote plugin loaded")
 
-  const configVersion = 4
-  const dataVersion = 2
+  const configVersion = 5
+  const dataVersion = 3
 
   // Create config file if they don't exist
   try {
@@ -103,6 +104,8 @@ module.exports = function (server, serverData) {
       },
       parkourMaxPlayers: 1, // Max players that can parkour in one "session"
       dropperGlassOpenTime: 1000, // Time that dropper glass remains only in ms
+      dropperTimeout: 60000, // Maximum time allowed in the dropper
+      dropperMinimumTimeAnticheat: 5000 // Maximum time required in the dropper (for anticheat)
     }
     fs.writeFileSync("./plugins/mobvote/config.json", JSON.stringify(pluginConfig))
   }
@@ -352,7 +355,7 @@ module.exports = function (server, serverData) {
             var leaderboardData = []
 
             for (const scoreXuid in pluginData.dropper_scores) {
-              leaderboardData.push(pluginData.dropper_scores[scoreXuid])
+              leaderboardData.push(Object.assign({}, pluginData.dropper_scores[scoreXuid]))
             }
 
             // Sort leaderboard data
@@ -405,48 +408,69 @@ module.exports = function (server, serverData) {
 
           switch (entityData.entity_type) {
             case "mv:dropper_agnes":
-              client.queue()
+              // Put glass in dropper
+              client.queue("update_block", {"position":{"x":12,"y":310,"z":10},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+              client.queue("update_block", {"position":{"x":11,"y":310,"z":10},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+              client.queue("update_block", {"position":{"x":10,"y":310,"z":10},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+              client.queue("update_block", {"position":{"x":12,"y":310,"z":9},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+              client.queue("update_block", {"position":{"x":11,"y":310,"z":9},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+              client.queue("update_block", {"position":{"x":10,"y":310,"z":9},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+              client.queue("update_block", {"position":{"x":12,"y":310,"z":8},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+              client.queue("update_block", {"position":{"x":11,"y":310,"z":8},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+              client.queue("update_block", {"position":{"x":10,"y":310,"z":8},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+
+              //TODO:  PLAY SOUND
+              //TODO: FIX YAW
+              client.queue("move_player", {"runtime_id":serverData.players[client.profile.uuid].runtime_entity_id,"position":{"x":11,"y":317,"z":9},"pitch":90,"yaw":90,"head_yaw":90,"mode":"teleport","on_ground":false,"ridden_runtime_id":0,"teleport":{"cause":"command","source_entity_type":1},"tick":"0"})
+
+              // Display start message
+              client.queue("set_title", { "type": "set_durations", "text": "", "fade_in_time": 5, "stay_time": 60, "fade_out_time": 5, "xuid": "", "platform_online_id": "" })
+              client.queue("set_title", { "type": "set_subtitle_json", "text": JSON.stringify({"rawtext":[{"translate":"bb.dropper.subtitle.start"}]}), "fade_in_time":-1, "stay_time":-1, "fade_out_time":-1, "xuid":"", "platform_online_id":"" })
+              client.queue("set_title", { "type": "set_title_json", "text": JSON.stringify({"rawtext":[{"translate":"bb.dropper.title.start"}]}), "fade_in_time": -1, "stay_time": -1, "fade_out_time": -1, "xuid": "", "platform_online_id": "" })
+              client.queue("set_title", {"type":"action_bar_message_json","text":JSON.stringify({"rawtext":[{"translate":"bb.dropper.actionbar.start"}]}),"fade_in_time":-1,"stay_time":-1,"fade_out_time":-1,"xuid":"","platform_online_id":""})
+
+              // Wait a little bit
+              setTimeout(() => {
+                // Open up glass
+                client.queue("update_block", {"position":{"x":12,"y":310,"z":10},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+                client.queue("update_block", {"position":{"x":11,"y":310,"z":10},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+                client.queue("update_block", {"position":{"x":10,"y":310,"z":10},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+                client.queue("update_block", {"position":{"x":12,"y":310,"z":9},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+                client.queue("update_block", {"position":{"x":11,"y":310,"z":9},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+                client.queue("update_block", {"position":{"x":10,"y":310,"z":9},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+                client.queue("update_block", {"position":{"x":12,"y":310,"z":8},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+                client.queue("update_block", {"position":{"x":11,"y":310,"z":8},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+                client.queue("update_block", {"position":{"x":10,"y":310,"z":8},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
+
+                // Start timer
+                tmpPluginData.playerData[client.profile.xuid].dropper.timerActive = true
+                tmpPluginData.playerData[client.profile.xuid].dropper.timerStart = Date.now()
+
+                // Timer function
+                tmpPluginData.playerData[client.profile.xuid].dropper.timerID = setInterval(() => {
+                  const timerValue = Date.now() - tmpPluginData.playerData[client.profile.xuid].dropper.timerStart
+
+                  if (timerValue < pluginConfig.dropperTimeout) {
+                    const timerText = {"rawtext":[{"translate":"bb.dropper.actionbar.time"},{"text":" "},{"text": (timerValue/1000).toFixed(1) }]}
+                    client.queue("set_title", {"type":"action_bar_message_json","text":JSON.stringify(timerText),"fade_in_time":-1,"stay_time":-1,"fade_out_time":-1,"xuid":"","platform_online_id":""})
+                  } else {
+                    // Display lose message
+                    client.queue("set_title", { "type": "set_durations", "text": "", "fade_in_time": 5, "stay_time": 60, "fade_out_time": 5, "xuid": "", "platform_online_id": "" })
+                    client.queue("set_title", { "type": "set_subtitle_json", "text": JSON.stringify({"rawtext":[{"translate":"bb.dropper.subtitle.lose"}]}), "fade_in_time":-1, "stay_time":-1, "fade_out_time":-1, "xuid":"", "platform_online_id":"" })
+                    client.queue("set_title", { "type": "set_title_json", "text": JSON.stringify({"rawtext":[{"translate":"bb.dropper.title.lose"}]}), "fade_in_time": -1, "stay_time": -1, "fade_out_time": -1, "xuid": "", "platform_online_id": "" })
+                    client.queue("set_title", {"type":"action_bar_message_json","text":JSON.stringify({"rawtext":[{"translate":"bb.dropper.actionbar.lose"}]}),"fade_in_time":-1,"stay_time":-1,"fade_out_time":-1,"xuid":"","platform_online_id":""})
+
+                    // Teleport player
+                    client.queue("move_player", {"runtime_id":serverData.players[client.profile.uuid].runtime_entity_id,"position":{"x":11,"y":317,"z":9},"pitch":90,"yaw":90,"head_yaw":90,"mode":"teleport","on_ground":false,"ridden_runtime_id":0,"teleport":{"cause":"command","source_entity_type":1},"tick":"0"})
+
+                    // Stop timer
+                    tmpPluginData.playerData[client.profile.xuid].dropper.timerActive = false
+                    clearInterval(tmpPluginData.playerData[client.profile.xuid].dropper.timerID)
+                  }
+                }, 10)
+              }, 2000)
               break
           }
-
-          client.queue("update_block", {"position":{"x":12,"y":310,"z":10},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-          client.queue("update_block", {"position":{"x":11,"y":310,"z":10},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-          client.queue("update_block", {"position":{"x":10,"y":310,"z":10},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-          client.queue("update_block", {"position":{"x":12,"y":310,"z":9},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-          client.queue("update_block", {"position":{"x":11,"y":310,"z":9},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-          client.queue("update_block", {"position":{"x":10,"y":310,"z":9},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-          client.queue("update_block", {"position":{"x":12,"y":310,"z":8},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-          client.queue("update_block", {"position":{"x":11,"y":310,"z":8},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-          client.queue("update_block", {"position":{"x":10,"y":310,"z":8},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-
-          //TODO:  PLAY SOUND
-          //TODO: FIX YAW
-          client.queue("move_player", {"runtime_id":serverData.players[client.profile.uuid].runtime_entity_id,"position":{"x":11,"y":317,"z":9},"pitch":90,"yaw":90,"head_yaw":90,"mode":"teleport","on_ground":false,"ridden_runtime_id":0,"teleport":{"cause":"command","source_entity_type":1},"tick":"0"})
-
-          client.queue("set_title", { "type": "set_durations", "text": "", "fade_in_time": 5, "stay_time": 60, "fade_out_time": 5, "xuid": "", "platform_online_id": "" })
-          client.queue("set_title", { "type": "set_subtitle_json", "text": JSON.stringify({"rawtext":[{"translate":"bb.dropper.subtitle.start"}]}), "fade_in_time":-1, "stay_time":-1, "fade_out_time":-1, "xuid":"", "platform_online_id":"" })
-          client.queue("set_title", { "type": "set_title_json", "text": JSON.stringify({"rawtext":[{"translate":"bb.dropper.title.start"}]}), "fade_in_time": -1, "stay_time": -1, "fade_out_time": -1, "xuid": "", "platform_online_id": "" })
-
-          setTimeout(() => {
-            client.queue("update_block", {"position":{"x":12,"y":310,"z":10},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-            client.queue("update_block", {"position":{"x":11,"y":310,"z":10},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-            client.queue("update_block", {"position":{"x":10,"y":310,"z":10},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-            client.queue("update_block", {"position":{"x":12,"y":310,"z":9},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-            client.queue("update_block", {"position":{"x":11,"y":310,"z":9},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-            client.queue("update_block", {"position":{"x":10,"y":310,"z":9},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-            client.queue("update_block", {"position":{"x":12,"y":310,"z":8},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-            client.queue("update_block", {"position":{"x":11,"y":310,"z":8},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-            client.queue("update_block", {"position":{"x":10,"y":310,"z":8},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-
-            // Start timer
-            tmpPluginData.playerData[client.profile.xuid].dropper.timerActive = true
-            tmpPluginData.playerData[client.profile.xuid].dropper.timerStart = Date.now()
-
-            tmpPluginData.playerData[client.profile.xuid].dropper.timerID = setInterval(() => {
-              const timerText = {"rawtext":[{"translate":"bb.dropper.actionbar.time"},{"text":" "},{"text": ((Date.now() - tmpPluginData.playerData[client.profile.xuid].dropper.timerStart)/1000).toFixed(1) }]}
-              client.queue("set_title", {"type":"action_bar_message_json","text":JSON.stringify(timerText),"fade_in_time":-1,"stay_time":-1,"fade_out_time":-1,"xuid":"","platform_online_id":""})
-            }, 10)
-          }, 2000)
         }
       } else if (data.request_type === 6) { // Run NPC open commands
         // Sound mappings for NPCs
@@ -479,26 +503,42 @@ module.exports = function (server, serverData) {
     })
 
     client.on('move_player', (data) => {
+      // Dropper Logic
       if (tmpPluginData.playerData[client.profile.xuid].dropper.timerActive && data.position.y < 20) {
         // Stop dropper timer
         clearInterval(tmpPluginData.playerData[client.profile.xuid].dropper.timerID)
         tmpPluginData.playerData[client.profile.xuid].dropper.timerActive = false
         const timerTime = Date.now() - tmpPluginData.playerData[client.profile.xuid].dropper.timerStart
 
-        // Display time
-        client.queue("set_title", { "type": "set_durations", "text": "", "fade_in_time": 5, "stay_time": 60, "fade_out_time": 5, "xuid": "", "platform_online_id": "" })
-        client.queue("set_title", { "type": "set_subtitle_json", "text": JSON.stringify({"rawtext":[{"translate":"bb.dropper.subtitle.win"}]}), "fade_in_time":-1, "stay_time":-1, "fade_out_time":-1, "xuid":"", "platform_online_id":"" })
-        client.queue("set_title", { "type": "set_title_json", "text": JSON.stringify({"rawtext":[{"text": (timerTime/1000).toFixed(1) }, {"text": " "}, {"translate":"bb.dropper.title.win"}]}), "fade_in_time": -1, "stay_time": -1, "fade_out_time": -1, "xuid": "", "platform_online_id": "" })
-        client.queue("set_title", {"type":"action_bar_message_json","text":JSON.stringify({"rawtext":[{"translate":"bb.dropper.actionbar.personal_best"}]}),"fade_in_time":-1,"stay_time":-1,"fade_out_time":-1,"xuid":"","platform_online_id":""})
+        // Check if the time is greater than the minimum possible time
+        if (timerTime > pluginConfig.dropperMinimumTimeAnticheat) {
+          // Display time and win message
+          client.queue("set_title", { "type": "set_durations", "text": "", "fade_in_time": 5, "stay_time": 60, "fade_out_time": 5, "xuid": "", "platform_online_id": "" })
+          client.queue("set_title", { "type": "set_subtitle_json", "text": JSON.stringify({"rawtext":[{"translate":"bb.dropper.subtitle.win"}]}), "fade_in_time":-1, "stay_time":-1, "fade_out_time":-1, "xuid":"", "platform_online_id":"" })
+          client.queue("set_title", { "type": "set_title_json", "text": JSON.stringify({"rawtext":[{"text": (timerTime/1000).toFixed(1) }, {"text": " "}, {"translate":"bb.dropper.title.win"}]}), "fade_in_time": -1, "stay_time": -1, "fade_out_time": -1, "xuid": "", "platform_online_id": "" })
 
-        // Write time to data
-        pluginData.dropper_scores[client.profile.xuid] = {
-          username: client.profile.name,
-          uuid: client.profile.uuid,
-          scoreData: timerTime  // REMEMBER: It is in ms
+          // Check if it is their personal best
+          if (!Object.keys(pluginData.dropper_scores).includes(client.profile.xuid) || pluginData.dropper_scores[client.profile.xuid].scoreData > timerTime) {
+            client.queue("set_title", {"type":"action_bar_message_json","text":JSON.stringify({"rawtext":[{"translate":"bb.dropper.actionbar.personal_best"}]}),"fade_in_time":-1,"stay_time":-1,"fade_out_time":-1,"xuid":"","platform_online_id":""})
+
+            // Write time to data
+            pluginData.dropper_scores[client.profile.xuid] = {
+              username: client.profile.name,
+              uuid: client.profile.uuid,
+              scoreData: timerTime  // REMEMBER: It is in ms
+            }
+
+            fs.writeFileSync("./plugins/mobvote/data.json", JSON.stringify(pluginData))
+          } else {
+            client.queue("set_title", {"type":"action_bar_message_json","text":JSON.stringify({"rawtext":[{"translate":"bb.dropper.actionbar.win"}]}),"fade_in_time":-1,"stay_time":-1,"fade_out_time":-1,"xuid":"","platform_online_id":""})
+          }
+        } else { // Time is impossible to atain, must be fake
+          // Display lose message
+          client.queue("set_title", { "type": "set_durations", "text": "", "fade_in_time": 5, "stay_time": 60, "fade_out_time": 5, "xuid": "", "platform_online_id": "" })
+          client.queue("set_title", { "type": "set_subtitle_json", "text": JSON.stringify({"rawtext":[{"translate":"bb.dropper.subtitle.lose"}]}), "fade_in_time":-1, "stay_time":-1, "fade_out_time":-1, "xuid":"", "platform_online_id":"" })
+          client.queue("set_title", { "type": "set_title_json", "text": JSON.stringify({"rawtext":[{"translate":"bb.dropper.title.lose"}]}), "fade_in_time": -1, "stay_time": -1, "fade_out_time": -1, "xuid": "", "platform_online_id": "" })
+          client.queue("set_title", {"type":"action_bar_message_json","text":JSON.stringify({"rawtext":[{"translate":"bb.dropper.actionbar.lose"}]}),"fade_in_time":-1,"stay_time":-1,"fade_out_time":-1,"xuid":"","platform_online_id":""})
         }
-
-        fs.writeFileSync("./plugins/mobvote/data.json", JSON.stringify(pluginData))
       }
     })
 
@@ -507,25 +547,6 @@ module.exports = function (server, serverData) {
       commandData = data.command.split(' ')
       try {
         switch (commandData[0]) {
-          case "/startblockcycle":
-            if (!tmpPluginData.playerData[client.profile.xuid].dropper.timerActive) {
-              tmpPluginData.playerData[client.profile.xuid].dropper.timerActive = true
-              tmpPluginData.playerData[client.profile.xuid].dropper.timerStart = 0
-
-              tmpPluginData.playerData[client.profile.xuid].dropper.timerID = setInterval(() => {
-                tmpPluginData.playerData[client.profile.xuid].dropper.timerStart += 1
-                const timerText = {"rawtext":[{"translate":"Block ID:"},{"text":" "},{"text": tmpPluginData.playerData[client.profile.xuid].dropper.timerStart.toString() }]}
-                client.queue("set_title", {"type":"action_bar_message_json","text":JSON.stringify(timerText),"fade_in_time":-1,"stay_time":-1,"fade_out_time":-1,"xuid":"","platform_online_id":""})
-                client.queue("update_block", {"position":{"x":12,"y":310,"z":9},"block_runtime_id":tmpPluginData.playerData[client.profile.xuid].dropper.timerStart,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
-              }, 100)
-            }
-            break
-          case "/stopblockcycle":
-            if (tmpPluginData.playerData[client.profile.xuid].dropper.timerActive) {
-              tmpPluginData.playerData[client.profile.xuid].dropper.timerActive = false
-              clearInterval(tmpPluginData.playerData[client.profile.xuid].dropper.timerID)
-            }
-            break
         }
       } catch (e) {
         console.error(e)
