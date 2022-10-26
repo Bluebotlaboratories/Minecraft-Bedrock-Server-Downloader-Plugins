@@ -10,8 +10,9 @@ const fs = require('fs');
 //   - [x] Implement Vote Data Saving
 //   - [x] Implement Vote Response
 // - [~] Implement Dropper
-//   - [ ] Implement queue sounds
-//   - [ ] Implement glass sounds
+//   - [ ] Implement "waypoint"/woosh sounds
+//   - [x] Implement queue sounds
+//   - [x] Implement glass sounds
 //   - [x] Implement timer start and stop
 //   - [x] Implement leaderboard saving
 //   - [x] Implement teleportation
@@ -45,7 +46,7 @@ const fs = require('fs');
 module.exports = function (server, serverData) {
   console.log("Mob Vote plugin loaded")
 
-  const configVersion = 5
+  const configVersion = 6
   const dataVersion = 3
 
   // Create config file if they don't exist
@@ -105,7 +106,22 @@ module.exports = function (server, serverData) {
       parkourMaxPlayers: 1, // Max players that can parkour in one "session"
       dropperGlassOpenTime: 1000, // Time that dropper glass remains only in ms
       dropperTimeout: 60000, // Maximum time allowed in the dropper
-      dropperMinimumTimeAnticheat: 5000 // Maximum time required in the dropper (for anticheat)
+      dropperMinimumTimeAnticheat: 5000, // Maximum time required in the dropper (for anticheat)
+      dropperWaypoints: [
+        289,
+        262,
+        248,
+        222,
+        185,
+        166,
+        149,
+        122,
+        110,
+        81,
+        62,
+        41,
+        24
+      ]
     }
     fs.writeFileSync("./plugins/mobvote/config.json", JSON.stringify(pluginConfig))
   }
@@ -156,7 +172,8 @@ module.exports = function (server, serverData) {
             timerActive: false,
             timerStart: 0,
             timerEnd: 0,
-            timerID: null
+            timerID: null,
+            currentWaypoint: -1
           }
         }
       }
@@ -406,6 +423,15 @@ module.exports = function (server, serverData) {
           // Close NPC's dialog first (use client.write so that it happens first)
           client.write("npc_dialogue", { "entity_id": actorIDList, "action_type": 2, "dialogue": "", "screen_name": "", "npc_name": "", "action_json": "" })
 
+          // Play join queue sound
+          // Convert regular entity position to strange sound packet position
+          const soundPacketPosition = {
+            "x": (8 * serverData.players[client.profile.uuid].position.coordinates.x) + 4,
+            "y": (8 * serverData.players[client.profile.uuid].position.coordinates.y),
+            "z": (8 * serverData.players[client.profile.uuid].position.coordinates.z) + 4
+          }
+          client.queue("play_sound", { "name": "minigame.joinqueue", "coordinates": soundPacketPosition, "volume": 1, "pitch": 1 })
+
           switch (entityData.entity_type) {
             case "mv:dropper_agnes":
               // Put glass in dropper
@@ -419,9 +445,17 @@ module.exports = function (server, serverData) {
               client.queue("update_block", {"position":{"x":11,"y":310,"z":8},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
               client.queue("update_block", {"position":{"x":10,"y":310,"z":8},"block_runtime_id":6206,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
 
-              //TODO:  PLAY SOUND
               //TODO: FIX YAW
               client.queue("move_player", {"runtime_id":serverData.players[client.profile.uuid].runtime_entity_id,"position":{"x":11,"y":317,"z":9},"pitch":90,"yaw":90,"head_yaw":90,"mode":"teleport","on_ground":false,"ridden_runtime_id":0,"teleport":{"cause":"command","source_entity_type":1},"tick":"0"})
+
+              // Play dropper start sound
+              // Convert regular entity position to strange sound packet position
+              const soundPacketPosition = {
+                "x": (8 * serverData.players[client.profile.uuid].position.coordinates.x) + 4,
+                "y": (8 * serverData.players[client.profile.uuid].position.coordinates.y),
+                "z": (8 * serverData.players[client.profile.uuid].position.coordinates.z) + 4
+              }
+              client.queue("play_sound", { "name": "dropper.start", "coordinates": soundPacketPosition, "volume": 1, "pitch": 1 })
 
               // Display start message
               client.queue("set_title", { "type": "set_durations", "text": "", "fade_in_time": 5, "stay_time": 60, "fade_out_time": 5, "xuid": "", "platform_online_id": "" })
@@ -442,6 +476,15 @@ module.exports = function (server, serverData) {
                 client.queue("update_block", {"position":{"x":11,"y":310,"z":8},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
                 client.queue("update_block", {"position":{"x":10,"y":310,"z":8},"block_runtime_id":60,"flags":{"_value":3,"neighbors":true,"network":true,"no_graphic":false,"unused":false,"priority":false},"layer":0})
 
+                // Play glass open sound
+                // Convert regular entity position to strange sound packet position
+                const soundPacketPosition = {
+                  "x": (8 * 11) + 4,
+                  "y": (8 * 317),
+                  "z": (8 * 9) + 4
+                }
+                client.queue("play_sound", { "name": "dropper.breakfloor", "coordinates": soundPacketPosition, "volume": 1, "pitch": 1 })
+
                 // Start timer
                 tmpPluginData.playerData[client.profile.xuid].dropper.timerActive = true
                 tmpPluginData.playerData[client.profile.xuid].dropper.timerStart = Date.now()
@@ -459,6 +502,14 @@ module.exports = function (server, serverData) {
                     client.queue("set_title", { "type": "set_subtitle_json", "text": JSON.stringify({"rawtext":[{"translate":"bb.dropper.subtitle.lose"}]}), "fade_in_time":-1, "stay_time":-1, "fade_out_time":-1, "xuid":"", "platform_online_id":"" })
                     client.queue("set_title", { "type": "set_title_json", "text": JSON.stringify({"rawtext":[{"translate":"bb.dropper.title.lose"}]}), "fade_in_time": -1, "stay_time": -1, "fade_out_time": -1, "xuid": "", "platform_online_id": "" })
                     client.queue("set_title", {"type":"action_bar_message_json","text":JSON.stringify({"rawtext":[{"translate":"bb.dropper.actionbar.lose"}]}),"fade_in_time":-1,"stay_time":-1,"fade_out_time":-1,"xuid":"","platform_online_id":""})
+
+                    // Convert regular entity position to strange sound packet position
+                    const soundPacketPosition = {
+                      "x": (8 * serverData.players[client.profile.uuid].position.coordinates.x) + 4,
+                      "y": (8 * serverData.players[client.profile.uuid].position.coordinates.y),
+                      "z": (8 * serverData.players[client.profile.uuid].position.coordinates.z) + 4
+                    }
+                    client.queue("play_sound", { "name": "minigame.fail", "coordinates": soundPacketPosition, "volume": 1, "pitch": 1 })
 
                     // Teleport player
                     client.queue("move_player", {"runtime_id":serverData.players[client.profile.uuid].runtime_entity_id,"position":{"x":11,"y":317,"z":9},"pitch":90,"yaw":90,"head_yaw":90,"mode":"teleport","on_ground":false,"ridden_runtime_id":0,"teleport":{"cause":"command","source_entity_type":1},"tick":"0"})
@@ -529,8 +580,26 @@ module.exports = function (server, serverData) {
             }
 
             fs.writeFileSync("./plugins/mobvote/data.json", JSON.stringify(pluginData))
+
+            // Play personal best sound
+            // Convert regular entity position to strange sound packet position
+            const soundPacketPosition = {
+              "x": (8 * data.position.x) + 4,
+              "y": (8 * data.position.y),
+              "z": (8 * data.position.z) + 4
+            }
+            client.queue("play_sound", { "name": "minigame.record", "coordinates": soundPacketPosition, "volume": 1, "pitch": 1 })
           } else {
             client.queue("set_title", {"type":"action_bar_message_json","text":JSON.stringify({"rawtext":[{"translate":"bb.dropper.actionbar.win"}]}),"fade_in_time":-1,"stay_time":-1,"fade_out_time":-1,"xuid":"","platform_online_id":""})
+
+            // Play completion sound
+            // Convert regular entity position to strange sound packet position
+            const soundPacketPosition = {
+              "x": (8 * data.position.x) + 4,
+              "y": (8 * data.position.y),
+              "z": (8 * data.position.z) + 4
+            }
+            client.queue("play_sound", { "name": "dropper.finish", "coordinates": soundPacketPosition, "volume": 1, "pitch": 1 })
           }
         } else { // Time is impossible to atain, must be fake
           // Display lose message
@@ -538,6 +607,30 @@ module.exports = function (server, serverData) {
           client.queue("set_title", { "type": "set_subtitle_json", "text": JSON.stringify({"rawtext":[{"translate":"bb.dropper.subtitle.lose"}]}), "fade_in_time":-1, "stay_time":-1, "fade_out_time":-1, "xuid":"", "platform_online_id":"" })
           client.queue("set_title", { "type": "set_title_json", "text": JSON.stringify({"rawtext":[{"translate":"bb.dropper.title.lose"}]}), "fade_in_time": -1, "stay_time": -1, "fade_out_time": -1, "xuid": "", "platform_online_id": "" })
           client.queue("set_title", {"type":"action_bar_message_json","text":JSON.stringify({"rawtext":[{"translate":"bb.dropper.actionbar.lose"}]}),"fade_in_time":-1,"stay_time":-1,"fade_out_time":-1,"xuid":"","platform_online_id":""})
+
+          // Play fail noise
+          // Convert regular entity position to strange sound packet position
+          const soundPacketPosition = {
+            "x": (8 * data.position.x) + 4,
+            "y": (8 * data.position.y),
+            "z": (8 * data.position.z) + 4
+          }
+          client.queue("play_sound", { "name": "minigame.fail", "coordinates": soundPacketPosition, "volume": 1, "pitch": 1 })
+        }
+      } else if (tmpPluginData.playerData[client.profile.xuid].dropper.timerActive && pluginConfig.dropperWaypoints.includes(Math.trunc(data.position.y))) { // Dropper noises
+        console.log("Y",data.position.y)
+        const locatedWaypoint = pluginConfig.dropperWaypoints.findIndex((element) => element === Math.trunc(data.position.y))
+        if (locatedWaypoint > tmpPluginData.playerData[client.profile.xuid].dropper.currentWaypoint) {
+          tmpPluginData.playerData[client.profile.xuid].dropper.currentWaypoint = locatedWaypoint
+
+          // Play "woosh" sound
+          // Convert regular entity position to strange sound packet position
+          const soundPacketPosition = {
+            "x": (8 * data.position.x) + 4,
+            "y": (8 * data.position.y),
+            "z": (8 * data.position.z) + 4
+          }
+          client.queue("play_sound", { "name": "dropper.waypoint_passed", "coordinates": soundPacketPosition, "volume": 1, "pitch": 1 })
         }
       }
     })
