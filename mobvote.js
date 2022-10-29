@@ -27,6 +27,11 @@ const fs = require('fs');
 //   - [ ] Implement timer
 //   - [ ] Implement display system
 //   - [ ] Implement leaderboard writing system
+// - [ ] Implement Endercoaster
+//   - [ ] Implement minecart mechanics
+//   - [ ] Implement minecart events
+//   - [ ] Implement minecart teleportation
+//   - [ ] Implement rail activation
 // - [ ] Implement Arena
 //   - [ ] Implement zombie & skeleton spawning
 //   - [ ] Implement zombie AI
