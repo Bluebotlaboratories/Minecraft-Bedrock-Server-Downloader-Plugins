@@ -10,7 +10,7 @@ const fs = require('fs');
 //   - [x] Implement Vote Data Saving
 //   - [x] Implement Vote Response
 // - [~] Implement Dropper
-//   - [ ] Implement "waypoint"/woosh sounds
+//   - [~] Implement "waypoint"/woosh sounds
 //   - [x] Implement queue sounds
 //   - [x] Implement glass sounds
 //   - [x] Implement timer start and stop
